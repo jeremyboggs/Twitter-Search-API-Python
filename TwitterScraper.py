@@ -245,13 +245,26 @@ class TwitterSlicer(TwitterSearch):
         Just prints out tweets
         :return: True always
         """
+        tweets_file = open('tweets.csv', 'a')
+        tweet_ids_file = open('tweet_ids.txt','a')
+
         for tweet in tweets:
             # Lets add a counter so we only collect a max number of tweets
             self.counter += 1
             if tweet['created_at'] is not None:
+                tweet_ids_file.write(tweet['tweet_id']+'\n')
                 t = datetime.datetime.fromtimestamp((tweet['created_at']/1000))
                 fmt = "%Y-%m-%d %H:%M:%S"
-                log.info("%i [%s] - %s" % (self.counter, t.strftime(fmt), tweet['text']))
+                tweets_file.write(('\n%s;%s;%s;%s;%s;%s,;%s' % (
+                    tweet['tweet_id'],
+                    str(t),
+                    tweet['user_screen_name'],
+                    tweet['user_name'].replace('"', '""'),
+                    tweet['retweets'],
+                    tweet['favorites'],
+                    tweet['text'].replace('"', '""').replace('\n', ' ').replace('\r', ' ').replace('  ', ' ').replace('|', ' '))))
+
+        tweets_file.close()
 
         return True
 
@@ -259,22 +272,22 @@ class TwitterSlicer(TwitterSearch):
 if __name__ == '__main__':
     log.basicConfig(level=log.INFO)
 
-    search_query = "Babylon 5"
     rate_delay_seconds = 0
     error_delay_seconds = 5
 
-    # Example of using TwitterSearch
-    twit = TwitterSearchImpl(rate_delay_seconds, error_delay_seconds, None)
-    twit.search(search_query)
+    search_query = input("Search term: ")
+    start_date = input("Find tweets since [yyyy-mm-dd]: ")
+    stop_date = input("Find tweets until [yyyy-mm-dd]: ")
 
-    # Example of using TwitterSlice
-    select_tweets_since = datetime.datetime.strptime("2016-10-01", '%Y-%m-%d')
-    select_tweets_until = datetime.datetime.strptime("2016-12-01", '%Y-%m-%d')
+    select_tweets_since = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    select_tweets_until = datetime.datetime.strptime(stop_date, '%Y-%m-%d')
     threads = 10
 
+    # Open the file ready for appending stuff to it
+    tweets_file = open('tweets.csv', 'w')
+    tweets_file.write('id;timestamp;user_screen_name;user_name;retweets;favorites;text')
+    
+    tweets_file.close()
     twitSlice = TwitterSlicer(rate_delay_seconds, error_delay_seconds, select_tweets_since, select_tweets_until,
                               threads)
-    twitSlice.search(search_query)
-
-    print("TwitterSearch collected %i" % twit.counter)
-    print("TwitterSlicer collected %i" % twitSlice.counter)
+    tweets = twitSlice.search(search_query)
