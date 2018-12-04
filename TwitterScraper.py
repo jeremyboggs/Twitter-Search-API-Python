@@ -199,6 +199,8 @@ class TwitterSearchImpl(TwitterSearch):
         Just prints out tweets
         :return:
         """
+        tweet_ids_file = open('tweet_ids.txt','a')
+
         for tweet in tweets:
             # Lets add a counter so we only collect a max number of tweets
             self.counter += 1
@@ -207,10 +209,13 @@ class TwitterSearchImpl(TwitterSearch):
                 t = datetime.datetime.fromtimestamp((tweet['created_at']/1000))
                 fmt = "%Y-%m-%d %H:%M:%S"
                 log.info("%i [%s] - %s" % (self.counter, t.strftime(fmt), tweet['text']))
+                tweet_ids_file.write(tweet['tweet_id']+'\n')
 
             # When we've reached our max limit, return False so collection stops
             if self.max_tweets is not None and self.counter >= self.max_tweets:
                 return False
+
+        tweet_ids_file.close()
 
         return True
 
@@ -245,6 +250,7 @@ class TwitterSlicer(TwitterSearch):
         Just prints out tweets
         :return: True always
         """
+        tweet_ids_file = open('tweet_ids.txt','a')
         for tweet in tweets:
             # Lets add a counter so we only collect a max number of tweets
             self.counter += 1
@@ -252,29 +258,30 @@ class TwitterSlicer(TwitterSearch):
                 t = datetime.datetime.fromtimestamp((tweet['created_at']/1000))
                 fmt = "%Y-%m-%d %H:%M:%S"
                 log.info("%i [%s] - %s" % (self.counter, t.strftime(fmt), tweet['text']))
+                tweet_ids_file.write(tweet['tweet_id']+'\n')
+        tweet_ids_file.close()
 
         return True
-
 
 if __name__ == '__main__':
     log.basicConfig(level=log.INFO)
 
-    search_query = "Babylon 5"
+    search_query = input("Search term: ")
+    start_date = input("Find tweets since [yyyy-mm-dd]: ")
+    stop_date = input("Find tweets until [yyyy-mm-dd]: ")
+
+    select_tweets_since = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    select_tweets_until = datetime.datetime.strptime(stop_date, '%Y-%m-%d')
+
+    threads = 10
     rate_delay_seconds = 0
     error_delay_seconds = 5
 
-    # Example of using TwitterSearch
-    twit = TwitterSearchImpl(rate_delay_seconds, error_delay_seconds, None)
-    twit.search(search_query)
+    # twit = TwitterSearchImpl(rate_delay_seconds, error_delay_seconds, None)
+    # twit.search(search_query)
+    # print("Search collected %i" % twit.counter)
 
-    # Example of using TwitterSlice
-    select_tweets_since = datetime.datetime.strptime("2016-10-01", '%Y-%m-%d')
-    select_tweets_until = datetime.datetime.strptime("2016-12-01", '%Y-%m-%d')
-    threads = 10
+    twitSlice = TwitterSlicer(rate_delay_seconds, error_delay_seconds, select_tweets_since, select_tweets_until, threads)
+    tweets = twitSlice.search(search_query)
+    print("Search collected %i" % twitSlice.counter)
 
-    twitSlice = TwitterSlicer(rate_delay_seconds, error_delay_seconds, select_tweets_since, select_tweets_until,
-                              threads)
-    twitSlice.search(search_query)
-
-    print("TwitterSearch collected %i" % twit.counter)
-    print("TwitterSlicer collected %i" % twitSlice.counter)
